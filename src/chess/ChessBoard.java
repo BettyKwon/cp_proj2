@@ -213,23 +213,16 @@ public class ChessBoard {
 		}
 		public void actionPerformed(ActionEvent e) {	// Only modify here
 			System.out.println(x+" "+y);
-			//isCheck = false;
 			Piece selectedPiece;
 			if(chessBoardSquares[y][x].getBackground() == Color.PINK){
 				movePiece(xPrev, yPrev, x, y);
 				selectedPiece = getIcon(x,y);
 				unmarkAll();
 				checkTest = true;
-				System.out.println(selectedPiece.type);
-				System.out.println(selectedPiece.color);
 				isCheck = false;
 				isCheckMate = false;
 				isCheck = check();
-				//mark(getAreaToAttack(selectedPiece.type, selectedPiece.color, x, y));
-				//markPossibleMoves(selectedPiece.type, selectedPiece.color, x, y);
-				//checkStatus(selectedPiece.type, selectedPiece.color, x, y);
-				if(isCheck) isCheckMate = checkmate1();
-				unmarkAll();
+				if(isCheck) isCheckMate = checkmate();
 				toggleTurn();
 			}
 			else {
@@ -239,7 +232,6 @@ public class ChessBoard {
 				if(selectedPiece.color == turn) {
 					mark(getAreaToAttack(selectedPiece.type, selectedPiece.color, x, y, turn));
 					mark(getAreaToMove(selectedPiece.type, selectedPiece.color, x, y, turn));
-					//markPossibleMoves(selectedPiece.type, selectedPiece.color, x, y);
 				}
 			}
 			xPrev = x;
@@ -277,7 +269,7 @@ public class ChessBoard {
 			System.out.println();
 			}
 		}
-		public boolean checkmate1() {
+		public boolean checkmate() {
 			boolean result;
 			for(int i = 0; i < 8; i++) {
 				for(int j = 0; j < 8; j++) {
@@ -287,27 +279,17 @@ public class ChessBoard {
 						Vector<Vector<Tuple<Integer, Integer>>> area2 = getAreaToMove(p.type, p.color, i, j, adversary);
 						area1.addAll(area2);
 						System.out.println("CHECK AREA TO ATTACK -- " + p.type + p.color + " " + i + " " + j);
-						print(area1);
+						//print(area1);
 						for(Vector<Tuple<Integer, Integer>> v : area1) {
 							for(Tuple<Integer, Integer> t : v) {
 								System.out.println("checkmate1 : " + i + " " + j + " " + t.first() + " " + t.second());
-								JButton[][] tempChessBoardSquares = new JButton[8][8];
-								for(int a=0; a<8; a++) {
-									System.arraycopy(chessBoardSquares[a], 0, tempChessBoardSquares[a], 0, 8);
-								}
-								Piece[][] tempChessBoardStatus = new Piece[8][8];
-								for(int a=0; a<8; a++) {
-									System.arraycopy(chessBoardStatus[a], 0, tempChessBoardStatus[a], 0, 8);
-								}
+								Piece temp = getIcon(t.first(), t.second());
 								movePiece(i, j, t.first(), t.second());
 								result = check();
-								for(int a=0; a<8; a++) {
-									System.arraycopy(tempChessBoardSquares[a], 0, chessBoardSquares[a], 0, 8);
-								}
-								for(int a=0; a<8; a++) {
-									System.arraycopy(tempChessBoardStatus[a], 0, chessBoardStatus[a], 0, 8);
-								}
+								movePiece(t.first(), t.second(), i, j);
+								setIcon(t.first(), t.second(), temp);
 								if(!result) {
+									System.out.println("No longer check verified! Not checkmate");
 									return false;
 								}
 							}
@@ -315,31 +297,8 @@ public class ChessBoard {
 					}
 				}
 			}
+			System.out.println("Checkmate method reached to the end. It is CHECKMATE!");
 			return true;
-		}
-		public boolean checkMate() {
-//			PlayerColor opposite = PlayerColor.none;
-//			if(turn == PlayerColor.black) opposite = PlayerColor.white;
-//			Tuple<Integer, Integer> target = getTarget(PieceType.king, opposite);
-//			// 1. 상대편 왕이 갈 자리가 없을 때
-//			Vector<Vector<Tuple<Integer, Integer>>> kingAttacks = getAreaToAttack(PieceType.king, opposite, target.first(), target.second()); 
-//			if(kingAttacks.size() == 0)
-//				return true;
-//			Vector<Vector<Tuple<Integer, Integer>>> totalAttackableArea = getTotalAttackableArea(turn);
-//			for(Vector<Tuple<Integer, Integer>> v : kingAttacks) {
-//				Tuple<Integer, Integer> t = v.firstElement();
-//				for(Vector<Tuple<Integer, Integer>> a : totalAttackableArea) {
-//					
-//				}
-//			}
-//			if(totalAttackableArea.contains(getAreaToAttack(PieceType.king, opposite, target.first(), target.second())));
-//			/*
-//			 * 1. 상대편 왕이 갈 자리가 없을 때
-//			 * 2. 상대편 왕이 움직인 후에도 현재 팀의 공격 범위에 있을 때
-//			 * 3. 현재 상대팀 왕을 공격할 수 있는 위치에 있는 현재 팀 말을 상대팀이 공격해서 제거하기가 불가능할 때
-//			 * 4. 왕을 공격할 수 있는 말들의 경로를 막는다.
-//			 */
-			return true; // TODO
 		}
 		public Tuple<Integer, Integer> getTarget(PieceType type, PlayerColor color) {
 			for(int i = 0; i < 8; i++) {
@@ -361,18 +320,13 @@ public class ChessBoard {
 			setIcon(x, y, target);
 		}
 		public Vector<Vector<Tuple<Integer, Integer>>> getAreaToAttack(PieceType type, PlayerColor color, int x, int y, PlayerColor turnColor) {
-			System.out.println("getAreaToAttack");
-//			boolean isMoveAttackSame = true; // Set to true if attack range == move range
-//			boolean jump = false; // Set to true for Knight
 			Vector<Vector<Tuple<Integer, Integer>>> attackableArea = new Vector<Vector<Tuple<Integer, Integer>>>();
 			if(type == PieceType.pawn) {
-				//isMoveAttackSame = false;
 				if(color == PlayerColor.black) {
 					Vector<Tuple<Integer, Integer>> temp1 = new Vector<Tuple<Integer, Integer> >();
 					Vector<Tuple<Integer, Integer>> temp2 = new Vector<Tuple<Integer, Integer> >();
 					if(isAttackable(x+1, y+1)) temp1.addElement(new Tuple<Integer, Integer>(x+1, y+1));
 					if(isAttackable(x+1, y-1)) temp2.addElement(new Tuple<Integer, Integer>(x+1, y-1));
-					System.out.println("--" + temp1.size() + "--");
 					attackableArea.addElement(temp1);
 					attackableArea.addElement(temp2);
 				}
@@ -381,7 +335,6 @@ public class ChessBoard {
 					Vector<Tuple<Integer, Integer>> temp2 = new Vector<Tuple<Integer, Integer> >();
 					if(isAttackable(x-1, y+1)) temp1.addElement(new Tuple<Integer, Integer>(x-1, y+1));
 					if(isAttackable(x-1, y-1)) temp2.addElement(new Tuple<Integer, Integer>(x-1, y-1));
-					System.out.println("--" + temp1.size() + "--");
 					attackableArea.addElement(temp1);
 					attackableArea.addElement(temp2);
 				}
@@ -465,7 +418,6 @@ public class ChessBoard {
 		public Vector<Vector<Tuple<Integer, Integer>>>
 		getPositionsInRange(Vector<Vector<Tuple<Integer, Integer>>> attackableArea, boolean moveOnly, PlayerColor color) {
 			Vector<Vector<Tuple<Integer, Integer>>> attackableAreaInRange = new Vector<Vector<Tuple<Integer, Integer>>>();
-			System.out.println("------ attackableArea should be 2 ---- : " + attackableArea.size());
 			for(Vector<Tuple<Integer, Integer>> v : attackableArea) {
 				Vector<Tuple<Integer, Integer>> temp = new Vector<Tuple<Integer, Integer>>();
 				for(Tuple<Integer, Integer> t : v) {
@@ -490,30 +442,20 @@ public class ChessBoard {
 				}
 				attackableAreaInRange.addElement(temp);
 			}
-			System.out.println("------ should be 2 ---- : " + attackableAreaInRange.size());
 			return attackableAreaInRange;			
 		}
 		public void mark(Vector<Vector<Tuple<Integer, Integer>>> area) {
-			System.out.println("mark");
 			for(Vector<Tuple<Integer, Integer>> v : area) {
-				System.out.println("first for loop : " + v.size());
 				for(Tuple<Integer, Integer> t : v) {
 					int x = t.first();
 					int y = t.second();
-					System.out.println("second for loop : " + x + " " + y);
 					if(isInRange(x, y)) {
 						markPosition(x, y);
-						System.out.println("MarkPostionInRange " + getIcon(x, y).color + getIcon(x,y).type);
-//						if(checkTest && getIcon(x, y).type == PieceType.king) {
-//							isCheck = true;
-//							System.out.println("CHECK!!");
-//						}
 					}
 				}
 			}
 		}
 		public Vector<Vector<Tuple<Integer, Integer>>> getAreaToMove(PieceType type, PlayerColor color, int x, int y, PlayerColor turnColor) {
-			System.out.println("getAreaToMove");
 			Vector<Vector<Tuple<Integer, Integer>>> result = new  Vector<Vector<Tuple<Integer, Integer>>>();
 			Vector<Tuple<Integer, Integer>> movableArea = new Vector<Tuple<Integer, Integer> >();
 			if(type == PieceType.pawn) {
@@ -527,7 +469,6 @@ public class ChessBoard {
 					if(x == 6)
 						movableArea.addElement(new Tuple<Integer, Integer>(x-2, y));
 				}
-				System.out.println("moveableArea : " + movableArea.size());
 				result.addElement(movableArea);
 			}
 			return getPositionsInRange(result, true, turnColor);
@@ -536,7 +477,6 @@ public class ChessBoard {
 			for(Tuple<Integer, Integer> t : coords) {
 				int x = t.first();
 				int y = t.second();
-				System.out.println("--" + x + y);
 				if(isInRange(x, y) 
 						&& (getIcon(x, y).type != PieceType.none)) {
 					if(!isMoveAttackSame || getIcon(x, y).color == turn) {
@@ -554,7 +494,6 @@ public class ChessBoard {
 			}
 		}
 		public void markPossibleMoves(PieceType type, PlayerColor color, int x, int y) {
-			System.out.println("--Mark Possible Moves--");
 			Vector<Tuple<Integer, Integer> > coords = new Vector<Tuple<Integer, Integer> >();
 			boolean isMoveAttackSame = true; // Set to true if attack range == move range
 			boolean jump = false; // Set to true for Knight
@@ -641,7 +580,6 @@ public class ChessBoard {
 		for(Tuple<Integer, Integer> t : coords) {
 			int x = t.first();
 			int y = t.second();
-			System.out.println("--" + x + y);
 			if(isInRange(x, y) 
 					&& (getIcon(x, y).type != PieceType.none)) {
 				if(!isMoveAttackSame || getIcon(x, y).color == turn) {
@@ -662,13 +600,10 @@ public class ChessBoard {
 		if(isInRange(x, y)) {
 			//if(!checkTest)
 			markPosition(x, y);
-			System.out.println("MartPostionInRange " + getIcon(x, y).color + getIcon(x,y).type);
-			if(checkTest && getIcon(x, y).type == PieceType.king) {
-				isCheck = true;
-				System.out.println("CHECK!!");
-			}
-//			else if(checkTest && getIcon(x, y).color != turn && getIcon(x, y).type == PieceType.king) {
+			//System.out.println("MartPostionInRange " + getIcon(x, y).color + getIcon(x,y).type);
+//			if(checkTest && getIcon(x, y).type == PieceType.king) {
 //				isCheck = true;
+//				//System.out.println("CHECK!!");
 //			}
 		}
 	}
@@ -714,11 +649,17 @@ public class ChessBoard {
 			adversary = PlayerColor.white;
 			setStatus("BLACK's TURN");
 		}
-		if(isCheck) addStatus("CHECK");
-		else if(isCheckMate) addStatus("CHECKMATE");
-
+		if(isCheck && isCheckMate) {
+			addStatus("CHECKMATE");
+			endGame();
+		}
+		else if(isCheck && !isCheckMate) addStatus("CHECK");
+	}
+	public void endGame() {
+		
 	}
 	void onInitiateBoard(){
+		turn = PlayerColor.black;
 		setStatus("BLACK's TURN");
 	}
 	public void addStatus(String inpt){
