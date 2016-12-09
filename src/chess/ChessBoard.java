@@ -213,29 +213,31 @@ public class ChessBoard {
 		}
 		public void actionPerformed(ActionEvent e) {	// Only modify here
 			System.out.println(x+" "+y);
-			Piece selectedPiece;
-			if(chessBoardSquares[y][x].getBackground() == Color.PINK){
-				movePiece(xPrev, yPrev, x, y);
-				selectedPiece = getIcon(x,y);
-				unmarkAll();
-				checkTest = true;
-				isCheck = false;
-				isCheckMate = false;
-				isCheck = check();
-				if(isCheck) isCheckMate = checkmate();
-				toggleTurn();
-			}
-			else {
-				selectedPiece = getIcon(x, y);
-				checkTest = false;
-				unmarkAll();
-				if(selectedPiece.color == turn) {
-					mark(getAreaToAttack(selectedPiece.type, selectedPiece.color, x, y, turn));
-					mark(getAreaToMove(selectedPiece.type, selectedPiece.color, x, y, turn));
+			if(!noMovesAllowed) {
+				Piece selectedPiece;
+				if(chessBoardSquares[y][x].getBackground() == Color.PINK){
+					movePiece(xPrev, yPrev, x, y, false);
+					selectedPiece = getIcon(x,y);
+					unmarkAll();
+					checkTest = true;
+					isCheck = false;
+					isCheckMate = false;
+					isCheck = check();
+					if(isCheck) isCheckMate = checkmate();
+					toggleTurn();
 				}
+				else {
+					selectedPiece = getIcon(x, y);
+					checkTest = false;
+					unmarkAll();
+					if(selectedPiece.color == turn) {
+						mark(getAreaToAttack(selectedPiece.type, selectedPiece.color, x, y, turn));
+						mark(getAreaToMove(selectedPiece.type, selectedPiece.color, x, y, turn));
+					}
+				}
+				xPrev = x;
+				yPrev = y;
 			}
-			xPrev = x;
-			yPrev = y;
 		}
 		public boolean check() {
 			for(int i = 0; i < 8; i++) {
@@ -261,14 +263,6 @@ public class ChessBoard {
 			}
 			return false;
 		}
-		public void print(Vector<Vector<Tuple<Integer, Integer>>> a) {
-			for(Vector<Tuple<Integer, Integer>> v : a) {
-				for(Tuple<Integer, Integer> t : v) {
-					System.out.print(t.first() + " " + t.second() + " / ");
-				}
-			System.out.println();
-			}
-		}
 		public boolean checkmate() {
 			boolean result;
 			for(int i = 0; i < 8; i++) {
@@ -279,14 +273,13 @@ public class ChessBoard {
 						Vector<Vector<Tuple<Integer, Integer>>> area2 = getAreaToMove(p.type, p.color, i, j, adversary);
 						area1.addAll(area2);
 						System.out.println("CHECK AREA TO ATTACK -- " + p.type + p.color + " " + i + " " + j);
-						//print(area1);
 						for(Vector<Tuple<Integer, Integer>> v : area1) {
 							for(Tuple<Integer, Integer> t : v) {
 								System.out.println("checkmate1 : " + i + " " + j + " " + t.first() + " " + t.second());
 								Piece temp = getIcon(t.first(), t.second());
-								movePiece(i, j, t.first(), t.second());
+								movePiece(i, j, t.first(), t.second(), true);
 								result = check();
-								movePiece(t.first(), t.second(), i, j);
+								movePiece(t.first(), t.second(), i, j, true);
 								setIcon(t.first(), t.second(), temp);
 								if(!result) {
 									System.out.println("No longer check verified! Not checkmate");
@@ -300,24 +293,14 @@ public class ChessBoard {
 			System.out.println("Checkmate method reached to the end. It is CHECKMATE!");
 			return true;
 		}
-		public Tuple<Integer, Integer> getTarget(PieceType type, PlayerColor color) {
-			for(int i = 0; i < 8; i++) {
-				for(int j = 0; j < 8; j++) {
-					Piece target = chessBoardStatus[j][i];
-					if(target.color == color && target.type == PieceType.king) {
-						return new Tuple<Integer, Integer>(i, j);
-					}
-				}
-			}
-			return null;
-		}
-		public void checkStatus(PieceType type, PlayerColor color, int x, int y) {
-			markPossibleMoves(type, color, x, y);
-		}
-		public void movePiece(int xPrev, int yPrev, int x, int y) {
+		public void movePiece(int xPrev, int yPrev, int x, int y, boolean isSimulation) {
 			Piece target = getIcon(xPrev, yPrev);
+			Piece victim = getIcon(x, y);
 			setIcon(xPrev, yPrev, new Piece());
 			setIcon(x, y, target);
+			if(!isSimulation && victim.type == PieceType.king) {
+				endGame();
+			}
 		}
 		public Vector<Vector<Tuple<Integer, Integer>>> getAreaToAttack(PieceType type, PlayerColor color, int x, int y, PlayerColor turnColor) {
 			Vector<Vector<Tuple<Integer, Integer>>> attackableArea = new Vector<Vector<Tuple<Integer, Integer>>>();
@@ -354,7 +337,6 @@ public class ChessBoard {
 				attackableArea.add(temp4);
 			}
 			else if(type == PieceType.knight) {
-				//jump = true;
 				Vector<Tuple<Integer, Integer>> temp = new Vector<Tuple<Integer, Integer>>();
 				temp.addElement(new Tuple<Integer, Integer>(x-2, y-1));
 				attackableArea.add((Vector<Tuple<Integer, Integer>>) temp.clone()); temp.clear();
@@ -473,144 +455,9 @@ public class ChessBoard {
 			}
 			return getPositionsInRange(result, true, turnColor);
 		}
-		void getAreaInrange(Vector<Tuple<Integer, Integer> > coords, boolean isMoveAttackSame, boolean jump) {
-			for(Tuple<Integer, Integer> t : coords) {
-				int x = t.first();
-				int y = t.second();
-				if(isInRange(x, y) 
-						&& (getIcon(x, y).type != PieceType.none)) {
-					if(!isMoveAttackSame || getIcon(x, y).color == turn) {
-						if(!jump)
-							break;
-					}
-					else if(getIcon(x, y).color != turn) {
-						markPositionInRange(x, y);
-						if(!jump)
-							break;
-					}
-				}
-				else
-					markPositionInRange(x, y);
-			}
-		}
-		public void markPossibleMoves(PieceType type, PlayerColor color, int x, int y) {
-			Vector<Tuple<Integer, Integer> > coords = new Vector<Tuple<Integer, Integer> >();
-			boolean isMoveAttackSame = true; // Set to true if attack range == move range
-			boolean jump = false; // Set to true for Knight
-			if(type == PieceType.pawn) {
-				isMoveAttackSame = false;
-				if(color == PlayerColor.black) {
-					coords.addElement(new Tuple<Integer, Integer>(x+1, y));
-					if(x == 1)
-						coords.addElement(new Tuple<Integer, Integer>(x+2, y));
-					/* mark possible attacks */
-					if(isAttackable(x+1, y+1)) markPositionInRange(x+1, y+1);
-					if(isAttackable(x+1, y-1)) markPositionInRange(x+1, y-1);
-				}
-				else if(color == PlayerColor.white) {
-					coords.addElement(new Tuple<Integer, Integer>(x-1, y));
-					if(x == 6)
-						coords.addElement(new Tuple<Integer, Integer>(x-2, y));
-					/* mark possible attacks */
-					if(isAttackable(x-1, y-1)) markPositionInRange(x-1, y-1);
-					if(isAttackable(x-1, y+1)) markPositionInRange(x-1, y+1);
-				}
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-			} // END OF PAWN
-			else if(type == PieceType.rook) {
-				for(int i = x-1; i >= 0; i--) coords.addElement(new Tuple<Integer, Integer>(i, y));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = x+1; i < 8; i++) coords.addElement(new Tuple<Integer, Integer>(i, y));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = y-1; i >= 0; i--) coords.addElement(new Tuple<Integer, Integer>(x, i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = y+1; i < 8; i++) coords.addElement(new Tuple<Integer, Integer>(x, i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-			}
-			else if(type == PieceType.knight) {
-				jump = true;
-				coords.addElement(new Tuple<Integer, Integer>(x-2, y-1));
-				coords.addElement(new Tuple<Integer, Integer>(x-1, y-2));
-				coords.addElement(new Tuple<Integer, Integer>(x-2, y+1));
-				coords.addElement(new Tuple<Integer, Integer>(x-1, y+2));
-				coords.addElement(new Tuple<Integer, Integer>(x+2, y+1));
-				coords.addElement(new Tuple<Integer, Integer>(x+1, y+2));
-				coords.addElement(new Tuple<Integer, Integer>(x+2, y-1));
-				coords.addElement(new Tuple<Integer, Integer>(x+1, y-2));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-			}
-			else if(type == PieceType.bishop) {
-				for(int i = 1; i < 7; i++) coords.addElement(new Tuple<Integer, Integer>(x+i, y+i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = 1; i < 7; i++) coords.addElement(new Tuple<Integer, Integer>(x+i, y-i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = 1; i < 7; i++) coords.addElement(new Tuple<Integer, Integer>(x-i, y+i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-				for(int i = 1; i < 7; i++) coords.addElement(new Tuple<Integer, Integer>(x-i, y-i));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-				coords.clear();
-			}
-			else if(type == PieceType.queen) {
-				markPossibleMoves(PieceType.rook, color, x, y);
-				markPossibleMoves(PieceType.bishop, color, x, y);
-			}
-			else if(type == PieceType.king) {
-				jump = true;
-				coords.addElement(new Tuple<Integer, Integer>(x-1, y-1));
-				coords.addElement(new Tuple<Integer, Integer>(x-1, y));
-				coords.addElement(new Tuple<Integer, Integer>(x-1, y+1));
-				coords.addElement(new Tuple<Integer, Integer>(x, y-1));
-				coords.addElement(new Tuple<Integer, Integer>(x, y+1));
-				coords.addElement(new Tuple<Integer, Integer>(x+1, y-1));
-				coords.addElement(new Tuple<Integer, Integer>(x+1, y));
-				coords.addElement(new Tuple<Integer, Integer>(x+1, y+1));
-				markPositionsInRange(coords, isMoveAttackSame, jump);
-			}
-		}
-	}
-		
-	void markPositionsInRange(Vector<Tuple<Integer, Integer> > coords, boolean isMoveAttackSame, boolean jump) {
-		for(Tuple<Integer, Integer> t : coords) {
-			int x = t.first();
-			int y = t.second();
-			if(isInRange(x, y) 
-					&& (getIcon(x, y).type != PieceType.none)) {
-				if(!isMoveAttackSame || getIcon(x, y).color == turn) {
-					if(!jump)
-						break;
-				}
-				else if(getIcon(x, y).color != turn) {
-					markPositionInRange(x, y);
-					if(!jump)
-						break;
-				}
-			}
-			else
-				markPositionInRange(x, y);
-		}
-	}
-	void markPositionInRange(int x, int y) {
-		if(isInRange(x, y)) {
-			//if(!checkTest)
-			markPosition(x, y);
-			//System.out.println("MartPostionInRange " + getIcon(x, y).color + getIcon(x,y).type);
-//			if(checkTest && getIcon(x, y).type == PieceType.king) {
-//				isCheck = true;
-//				//System.out.println("CHECK!!");
-//			}
-		}
 	}
 	boolean isAttackable(int x, int y) {
-		if(isInRange(x, y)
-			&& getIcon(x, y).type != PieceType.none
-			&& getIcon(x, y).color != turn) {
+		if(isInRange(x, y) && getIcon(x, y).type != PieceType.none && getIcon(x, y).color != turn) {
 			return true;
 		}
 		else
@@ -631,6 +478,7 @@ public class ChessBoard {
 	/* member variables */
 	PlayerColor turn = PlayerColor.black;
 	PlayerColor adversary = PlayerColor.white;
+	boolean noMovesAllowed = false;
 	boolean isCheck = false;
 	boolean isCheckMate = false;
 	boolean checkTest = false;
@@ -656,7 +504,7 @@ public class ChessBoard {
 		else if(isCheck && !isCheckMate) addStatus("CHECK");
 	}
 	public void endGame() {
-		
+		noMovesAllowed = true;
 	}
 	void onInitiateBoard(){
 		turn = PlayerColor.black;
